@@ -62,10 +62,39 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,             ///// 프로그램�
     {
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            TranslateMessage(&msg);                                 ///// 키보드 입력 메시지를 가공하여 프로그램에서 쓸 수 있도록 해준다.
+                                                                    ///// 전달된 메시지가 WM_KEYDOWN 인지 또는 문자 키인지 검사 후 맞을 경우, 메시지 큐에 전달한다.
+            DispatchMessage(&msg);                                  ///// 문자 입력이 아닌 경우, 디스패쳐를 통해 Proc(프로시저)로 전해진다.
         }
     }
+
+    ///// ==============================
+
+    ///// Message structure
+
+    /*
+    typedef struct tagMSG {
+        HWND        hwnd;           ///// 메시지를 받을 윈도우 핸들
+        UINT        message;        ///// 어떤 종류의 메시지인지 나타낸다. (가장 중요!!)
+        WPARAM      wParam;         ///// 32비트 값. 부가적인 정보를 나타낸다. (메시지마다 다르다.)
+        LPARAM      lParam;         ///// 32비트 값. 부가적인 정보를 나타낸다. (메시지마다 다르다.)
+        DWORD       time;           ///// 메시지가 발생한 시간
+        POINT       pt;             ///// 메시지가 발생했을 때 마우스 위치
+    } MSG, * PMSG, NEAR* NPMSG, FAR* LPMSG;
+    */
+
+    ///// ------------------------------
+
+    ///// 메시지 예시
+
+    ///// WM_QUIT;                  ///// 프로그램을 끝낼 때 발생하는 메시지
+    ///// WM_LBUTTONDOWN;           ///// 마우스 좌측 버튼을 누를 경우 발생하는 메시지
+    ///// WM_CHAR;                  ///// 키보드로부터 문자가 입력 되었을 때 발생하는 메시지
+    ///// WM_PAINT;                 ///// 화면을 다시 그려야 할 필요가 있을 때 발생하는 메시지
+    ///// WM_DESTROY;               ///// 윈도우가 메모리에서 파괴될 때 발생하는 메시지
+    ///// WM_CREATE;                ///// 윈도우가 처음 만들어질 때 발생하는 메시지
+
+    ///// ==============================
 
     return (int) msg.wParam;
 }
@@ -154,8 +183,31 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    ///// ==============================
+    ///// 기본 DC
+    HDC hdc;
+    ///// ==============================
+
     switch (message)
     {
+    ///// ==============================
+    case WM_LBUTTONDOWN:
+        {
+            ///// #01. (TEST) 글자 출력
+            hdc = GetDC(hWnd);
+            TextOut(hdc, 100, 100, L"Mouse", 5);
+            ReleaseDC(hWnd, hdc);
+        }
+        break;
+    ///// ==============================
+    case WM_RBUTTONUP:      ///// 윈도우 마우스 액션에서 결정으로 사용된다!! (((UX 내용)))
+        {
+            ///// #05. 메시지 박스
+            ///// MB_ICONWARNING : ! 느낌표
+            MessageBox(hWnd, L"TEST", L"TEST_Caption", MB_ICONWARNING | MB_CANCELTRYCONTINUE);
+        }
+        break;
+    ///// ==============================
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -178,6 +230,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
+            ///// ==============================
+            ///// #02. TextOut (단문 출력)
+            TextOut(hdc, 100, 200, L"Mouse2", 6);
+            ///// ------------------------------
+            SetTextAlign(hdc, TA_CENTER);
+            TextOut(hdc, 100, 250, L"Mouse3", 6);
+            TextOut(hdc, 100, 300, L"is 4", 4);
+            TextOut(hdc, 100, 350, L"MouseMouse5", 11);
+            ///// ==============================
+            ///// #03. DrawText (장문 출력)
+            RECT rt;
+            rt.left = 400;
+            rt.top = 100;
+            rt.right = 600;
+            rt.bottom = 500;
+            ///// RECT rt = { 400, 100, 600, 500 };   ///// (((위 코드와 같은 코드)))
+            TCHAR str[] = L"가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하";
+            DrawText(hdc, str, -1, &rt, DT_CENTER | DT_WORDBREAK);
+            ///// ==============================
+            ///// #04. 그래픽 출력
+            ///// (1) 선긋기
+            MoveToEx(hdc, 150, 150, NULL);
+            LineTo(hdc, 450, 450);
+            LineTo(hdc, 600, 450);
+            ///// ------------------------------
+            ///// (2) 사각형
+            Rectangle(hdc, 200, 100, 300, 200);
+            ///// ------------------------------
+            ///// (3) 원
+            Rectangle(hdc, 500, 100, 600, 200);
+            Ellipse(hdc, 500, 100, 600, 200);       ///// (((사각형을 그리고 원을 그려야 둘 다 보인다. 원을 먼저 그리면 사각형만 보인다.)))
+            ///// ==============================
             EndPaint(hWnd, &ps);
         }
         break;
