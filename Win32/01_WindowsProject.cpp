@@ -186,6 +186,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     ///// ==============================
     ///// 기본 DC
     HDC hdc;
+
+    ///// #05. 메시지 박스 (메시지 ID 선언)
+    int msgID = 0;
+
+    ///// #06. 문자 입력 변수
+    int len = 0;
+    static TCHAR m_str[256];
+
+    ///// #07. 키보드 액션 (글자 이동하기)
+    static int nX = 0, nY = 0;
     ///// ==============================
 
     switch (message)
@@ -203,8 +213,92 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_RBUTTONUP:      ///// 윈도우 마우스 액션에서 결정으로 사용된다!! (((UX 내용)))
         {
             ///// #05. 메시지 박스
-            ///// MB_ICONWARNING : ! 느낌표
-            MessageBox(hWnd, L"TEST", L"TEST_Caption", MB_ICONWARNING | MB_CANCELTRYCONTINUE);
+            ///// MB_ICONEXCLAMATION 또는 MB_ICONWARNING : ! 느낌표
+            ///// MB_ICONHAND, MB_ICONSTOP, MB_ICONERROR : X 표시
+            ///// MB_ICONQUESTION                        : ? 표시
+            ///// MB_ICONASTERISK, MB_ICONINFORMATION    : ! 표시
+
+            ///// 기본
+            ///// MessageBox(hWnd, L"TEST", L"TEST_Caption", MB_ICONINFORMATION | MB_CANCELTRYCONTINUE);
+
+            ///// 버튼 처리
+            hdc = GetDC(hWnd);
+            ///// msgID = MessageBox(hWnd, L"TEST", L"TEST_Caption", MB_ICONWARNING | MB_CANCELTRYCONTINUE);
+            msgID = MessageBox(hWnd, L"TEST", L"TEST_Caption", MB_ICONWARNING | MB_YESNO);  ///// 테스트 : MB_OKCANCEL, MB_YESNO
+            MessageBeep(MB_ICONERROR);                                                      ///// 비프음 출력
+            switch (msgID)
+            {
+            case IDYES:
+                TextOut(hdc, 100, 100, L"YES", 3);
+                break;
+            case IDNO:
+                TextOut(hdc, 100, 100, L"NO", 2);
+                break;
+            case IDOK:
+                TextOut(hdc, 100, 100, L"OK", 2);
+                break;
+            case IDCANCEL:
+                TextOut(hdc, 100, 100, L"CANCEL", 6);
+                break;
+            case IDTRYAGAIN:
+                TextOut(hdc, 100, 100, L"TRYAGAIN", 8);
+                break;
+            case IDCONTINUE:
+                TextOut(hdc, 100, 100, L"CONTINUE", 8);
+                break;
+            }
+            ReleaseDC(hWnd, hdc);
+        }
+        break;
+    case WM_CHAR:           ///// 아스키 코드 값을 체크한다... (키보드로 문자를 받고자 하는 경우)
+        {
+            ///// #06. 입력된 키(((보드))) 값들을 화면으로 출력해보자!!!
+            ///// len = lstrlen(m_str);
+            ///// m_str[len] = (TCHAR)wParam;
+            ///// m_str[len + 1] = 0;
+            ///// InvalidateRect(hWnd, NULL, FALSE);          ///// 화면 갱신 (WM_PAINT)       - 지우지 않고, 업데이트 - 작은 부하!
+            ///// InvalidateRect(hWnd, NULL, TRUE);           ///// 화면 갱신 (CLS + WM_PAINT) - 지우고, 업데이트
+
+            ///// 글자 지우기 (전체)
+            if (wParam == 8)                                  ///// 스페이스 키 : 32, 백스페이스 키 : 8
+            {
+                m_str[0] = 0;
+            }
+            else
+            {
+                len = lstrlen(m_str);
+                m_str[len] = (TCHAR)wParam;
+                m_str[len + 1] = 0;
+            }
+            InvalidateRect(hWnd, NULL, TRUE);                 ///// 화면 갱신 (CLS + WM_PAINT) - 지우고, 업데이트
+        }
+        break;
+    ///// #07. 키보드 액션
+    /////case WM_KEYUP:     ///// 윈도우 기본은 UP이 release!!!
+    case WM_KEYDOWN:        ///// 하지만 키보드는 DOWN이 우선시 된다!!! 누르고 있으면 연속적으로 발생한다!!!
+        {
+            switch (wParam)
+            {
+            case VK_LEFT:
+                nX -= 10;   ///// (((픽셀)))
+                break;
+            case VK_RIGHT:
+                nX += 10;
+                break;
+            case VK_UP:
+                nY -= 10;
+                break;
+            case VK_DOWN:
+                nY += 10;
+                break;
+            case VK_ESCAPE:                                 ///// ESC 키
+                /////PostMessage(hWnd, WM_CLOSE, 0, 0);     ///// 윈도우 메시지 보내기 가능. 윈도우 정상 종료
+                PostMessage(hWnd, WM_DESTROY, 0, 0);
+                /////PostQuitMessage(0);
+                break;
+            }
+            InvalidateRect(hWnd, NULL, FALSE);              ///// 화면 갱신 (WM_PAINT)       - 지우지 않고, 업데이트 - 작은 부하!
+            ///// InvalidateRect(hWnd, NULL, TRUE);         ///// 화면 갱신 (CLS + WM_PAINT) - 지우고, 업데이트
         }
         break;
     ///// ==============================
@@ -245,7 +339,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             rt.top = 100;
             rt.right = 600;
             rt.bottom = 500;
-            ///// RECT rt = { 400, 100, 600, 500 };   ///// (((위 코드와 같은 코드)))
+            ///// RECT rt = { 400, 100, 600, 500 };         ///// (((위 코드와 같은 코드)))
             TCHAR str[] = L"가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하";
             DrawText(hdc, str, -1, &rt, DT_CENTER | DT_WORDBREAK);
             ///// ==============================
@@ -260,7 +354,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             ///// ------------------------------
             ///// (3) 원
             Rectangle(hdc, 500, 100, 600, 200);
-            Ellipse(hdc, 500, 100, 600, 200);       ///// (((사각형을 그리고 원을 그려야 둘 다 보인다. 원을 먼저 그리면 사각형만 보인다.)))
+            Ellipse(hdc, 500, 100, 600, 200);               ///// (((사각형을 그리고 원을 그려야 둘 다 보인다. 원을 먼저 그리면 사각형만 보인다.)))
+            ///// ==============================
+            ///// #06. 글자 출력 (WM_CHAR 에서 입력받은 글자를 출력한다.)
+            SetTextAlign(hdc, TA_LEFT);                     ///// 왼쪽 정렬
+            TextOut(hdc, 100, 50, m_str, lstrlen(m_str));
+            ///// ==============================
+            ///// #07. 키보드 액션 (WM_KEYDOWN 에서 위치값을 받아와서 출력한다.)
+            TextOut(hdc, nX, nY, L"☆", lstrlen(L"☆"));    ///// (((lstrlen(L"☆") 대신 1을 넣어도 된다.)))
             ///// ==============================
             EndPaint(hWnd, &ps);
         }
