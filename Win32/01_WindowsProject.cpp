@@ -196,17 +196,143 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     ///// #07. 키보드 액션 (글자 이동하기)
     static int nX = 0, nY = 0;
+
+    ///// #08. 마우스로 그림 그리기
+    static bool m_bDraw = false;            ///// 마우스가 눌린 상태인지 확인할 수 있는 bool 변수 (flag)
+    static int m_iX, m_iY;                  ///// 마우스 PosX, PosY 좌표값
+
+    ///// #10. 윈도우 타이머
+    static time_t myTime;
+    static HANDLE hTimer;
+    static HANDLE hTimer2;                  ///// 타이머 추가
+    static TCHAR str_time[256];
+    SYSTEMTIME st;
     ///// ==============================
 
     switch (message)
     {
+    ///// ==============================
+    case WM_CREATE: ///// 윈도우 애플리케이션의 시작에 가장 처음으로 발생한다.
+        {
+            ///// #10. 윈도우 타이머 (생성)
+
+            ///// 타이머 생성 (ID = 1)
+            SetTimer(hWnd, 1, 1000, NULL);
+
+            ///// 굳이 시작부터... 1번 타이머를 구동하고 싶다!!!??
+            SendMessage(hWnd, WM_TIMER, 1, 0);
+
+            ///// 타이머 생성 (ID = 2)
+            SetTimer(hWnd, 2, 3000, NULL);
+
+            ///// 굳이 시작부터... 2번 타이머를 구동하고 싶다!!!?? (시작하자마자 사운드 출력!!)
+            SendMessage(hWnd, WM_TIMER, 2, 0);
+        }
+        break;
+    case WM_TIMER:
+        {
+            ///// #10. 윈도우 타이머
+            switch (wParam)     ///// 타이머 인덱스 (ID)
+            {
+            case 1:
+                ///// 타이머 1번의 발동 지점
+                GetLocalTime(&st);
+                _stprintf_s(str_time, _T("%d:%d:%d"), st.wHour, st.wMinute, st.wSecond);
+                
+                ///// WM_PAINT 호출
+                InvalidateRect(hWnd, NULL, FALSE);        ///// 화면 갱신 (WM_PAINT) - 지우지 않고, 업데이트 - 작은 부하!
+                break;
+            case 2:
+                ///// 타이머 2번의 발동 지점 (3초마다)
+                MessageBeep(0xFFFFFFFF);
+                break;
+            }
+        }
+        break;
     ///// ==============================
     case WM_LBUTTONDOWN:
         {
             ///// #01. (TEST) 글자 출력
             hdc = GetDC(hWnd);
             TextOut(hdc, 100, 100, L"Mouse", 5);
+            ///// ReleaseDC(hWnd, hdc);
+
+            ///// ------------------------------
+
+            ///// #08. 마우스로 그림 그리기
+            ///// lParam (32 bit >> 앞쪽 16 bit = Y Pos, 뒷쪽 16 bit = X Pos)
+            ///// wParam (마우스 버튼 상태와 키보드 조합의 상태가 전달된다.)
+            ///// MK_CONTROL : Ctrl 키가 눌려져 있다.
+            ///// MK_LBUTTON : 마우스 왼쪽 버튼이 눌려져 있다.
+            ///// MK_RBUTTON : 마우스 오른쪽 버튼이 눌려져 있다.
+            ///// MK_MBUTTON : 마우스 가운데 버튼이 눌려져 있다.
+            ///// MK_SHIFT   : Shift 키가 눌려져 있다.
+
+            ///// 마우스 눌림
+            m_bDraw = true;
+
+            ///// 마우스 좌표를 업데이트
+            m_iY = HIWORD(lParam);
+            m_iX = LOWORD(lParam);
+
+            ///// (TEST) 마우스 좌표 테스트
+            ///// TextOut(hdc, m_iX, m_iY, L"MouseXY", 7);
+
             ReleaseDC(hWnd, hdc);
+        }
+        break;
+    case WM_MOUSEMOVE:
+        {
+            ///// #08. 마우스로 그림 그리기
+
+            ///// (TEST) 마우스 좌표 테스트 (텍스트)
+            /////hdc = GetDC(hWnd);
+
+            ///// 마우스 좌표를 업데이트
+            /////m_iY = HIWORD(lParam);
+            /////m_iX = LOWORD(lParam);
+
+            ///// 문자 출력
+            /////TextOut(hdc, m_iX, m_iY, L"MOUSEMOVE", 9);
+
+            ///// DC 해제하기
+            /////ReleaseDC(hWnd, hdc);
+
+            ///// ------------------------------
+
+            ///// 선 그리기
+            if (m_bDraw)
+            {
+                ///// DC 얻어오기
+                hdc = GetDC(hWnd);
+
+                ///// 선 그리기의 시작점을 세팅한다.
+                MoveToEx(hdc, m_iX, m_iY, NULL);
+
+                ///// 마우스 좌표를 업데이트
+                m_iY = HIWORD(lParam);
+                m_iX = LOWORD(lParam);
+
+                ///// 선 긋기
+                LineTo(hdc, m_iX, m_iY);
+
+                ///// DC 해제하기
+                ReleaseDC(hWnd, hdc);
+            }
+        }
+        break;
+    case WM_LBUTTONUP:
+        {
+            ///// #08. 마우스로 그림 그리기
+            ///// 마우스가 눌려있다가 떼진 경우, 그리는 동작이 끝났음을 의미
+            m_bDraw = false;
+        }
+        break;
+    case WM_LBUTTONDBLCLK:
+        {
+            ///// #09. 더블 클릭 (화면 지우기)
+            ///// 윈도우 스타일에 CS_DBLCLKS 이 추가되어야 한다! ((( wcex.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS; )))
+            InvalidateRect(hWnd, NULL, TRUE);                 ///// 화면 갱신 (CLS + WM_PAINT) - 지우고, 업데이트
         }
         break;
     ///// ==============================
@@ -297,8 +423,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 /////PostQuitMessage(0);
                 break;
             }
-            InvalidateRect(hWnd, NULL, FALSE);              ///// 화면 갱신 (WM_PAINT)       - 지우지 않고, 업데이트 - 작은 부하!
-            ///// InvalidateRect(hWnd, NULL, TRUE);         ///// 화면 갱신 (CLS + WM_PAINT) - 지우고, 업데이트
+            ///// InvalidateRect(hWnd, NULL, FALSE);        ///// 화면 갱신 (WM_PAINT)       - 지우지 않고, 업데이트 - 작은 부하!
+            InvalidateRect(hWnd, NULL, TRUE);               ///// 화면 갱신 (CLS + WM_PAINT) - 지우고, 업데이트
         }
         break;
     ///// ==============================
@@ -363,10 +489,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             ///// #07. 키보드 액션 (WM_KEYDOWN 에서 위치값을 받아와서 출력한다.)
             TextOut(hdc, nX, nY, L"☆", lstrlen(L"☆"));    ///// (((lstrlen(L"☆") 대신 1을 넣어도 된다.)))
             ///// ==============================
+            ///// #10. 윈도우 타이머 (WM_TIMER 에서 시간을 받아와서 출력한다.)
+            TextOut(hdc, 100, 150, str_time, lstrlen(str_time));
+            ///// ==============================
             EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
+        ///// ==============================
+        ///// #10. 윈도우 타이머 (제거)
+        KillTimer(hWnd, 1);
+        KillTimer(hWnd, 2);
+        ///// ==============================
         PostQuitMessage(0);
         break;
     default:
