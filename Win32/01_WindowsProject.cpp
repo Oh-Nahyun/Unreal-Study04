@@ -171,6 +171,24 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+///// ==============================
+
+void CALLBACK TimerProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)    /////
+{
+    HDC hdc;
+    hdc = GetDC(hWnd);
+
+    ///// 점을 100개씩 랜덤하게 찍는다.
+    for (int i = 0; i < 100; i++)
+    {
+        SetPixel(hdc, rand() % 500, rand() % 100, RGB(rand() % 256, rand() % 256, rand() % 256));
+    }
+
+    ReleaseDC(hWnd, hdc);
+}
+
+///// ==============================
+
 //
 //  함수: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -207,6 +225,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     static HANDLE hTimer2;                  ///// 타이머 추가
     static TCHAR str_time[256];
     SYSTEMTIME st;
+
+    ///// #11. GDI 사용 (색 채우기, 선 색 변경)
+    HBRUSH MyBrush, OldBrush;               ///// 브러쉬
+
+    ///// #12. PEN 사용
+    HPEN MyPen, OldPen;                     ///// 펜
+
+    ///// #13. 패턴 출력 (PEN, BRUSH)
+    RECT testRT = {};
+    int nWidth = 100;
+    int nHeight = 100;
     ///// ==============================
 
     switch (message)
@@ -217,16 +246,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             ///// #10. 윈도우 타이머 (생성)
 
             ///// 타이머 생성 (ID = 1)
-            SetTimer(hWnd, 1, 1000, NULL);
-
+            hTimer = (HANDLE)SetTimer(hWnd, 1, 1000, NULL);
             ///// 굳이 시작부터... 1번 타이머를 구동하고 싶다!!!??
             SendMessage(hWnd, WM_TIMER, 1, 0);
 
             ///// 타이머 생성 (ID = 2)
-            SetTimer(hWnd, 2, 3000, NULL);
-
+            hTimer2 = (HANDLE)SetTimer(hWnd, 2, 3000, NULL);
             ///// 굳이 시작부터... 2번 타이머를 구동하고 싶다!!!?? (시작하자마자 사운드 출력!!)
             SendMessage(hWnd, WM_TIMER, 2, 0);
+
+            ///// ------------------------------
+
+            ///// 타이머 프로시저 추가!! 반복 처리를 위한 기능
+            SetTimer(hWnd, 3, 100, TimerProc);
         }
         break;
     case WM_TIMER:
@@ -492,6 +524,67 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             ///// #10. 윈도우 타이머 (WM_TIMER 에서 시간을 받아와서 출력한다.)
             TextOut(hdc, 100, 150, str_time, lstrlen(str_time));
             ///// ==============================
+            ///// #11. GDI 사용 (색 채우기, 선 색 변경)
+            MyBrush  = (HBRUSH)GetStockObject(GRAY_BRUSH);  ///// StockObject는 삭제 안해줘도 괜찮다. 하지만 가급적 삭제하는 것이 좋다.
+            OldBrush = (HBRUSH)SelectObject(hdc, MyBrush);  ///// 이전에 사용하던 브러쉬를 리턴해준다. 저장해놓아야 한다.
+
+            Rectangle(hdc, 100, 300, 400, 400);
+            Ellipse(hdc, 120, 400, 220, 500);
+
+            ///// 색 변경 복구하기!!!
+            SelectObject(hdc, OldBrush);
+
+            ///// 복구 확인하기 (원래 흰색)
+            Ellipse(hdc, 120, 500, 220, 600);
+            
+            DeleteObject(MyBrush);                          ///// 생성 후 다 사용했다면 필히 삭제해줘야 한다.
+            DeleteObject(OldBrush);                         ///// 생성 후 다 사용했다면 필히 삭제해줘야 한다.
+            ///// ==============================
+            ///// #12. PEN 사용 (HPEN CreatePen([in] int iStyle, [in] int cWidth, [in] COLORREF color);)
+            MyPen = CreatePen(PS_SOLID, 5, RGB(0, 255, 0)); ///// 녹색
+            OldPen = (HPEN)SelectObject(hdc, MyPen);
+            
+            Rectangle(hdc, 100, 600, 400, 700);
+
+            SelectObject(hdc, OldPen);
+            DeleteObject(MyPen);
+            DeleteObject(OldPen);
+            ///// ==============================
+            ///// #13. 패턴 출력 (PEN, BRUSH)
+            for (int i = 0; i < 6; i++)                     ///// PEN
+            {
+                MyPen  = CreatePen(i, 1, RGB(255, 0, 0));
+                OldPen = (HPEN)SelectObject(hdc, MyPen);
+
+                testRT.left   = 800 + ((i % 3) * (nWidth + 10));
+                testRT.top    = 100 + ((i / 3) * (nHeight + 10));
+                testRT.right  = testRT.left + nWidth;
+                testRT.bottom = testRT.top + nHeight;
+
+                Rectangle(hdc, testRT.left, testRT.top, testRT.right, testRT.bottom);
+
+                SelectObject(hdc, OldPen);
+                DeleteObject(MyPen);
+                DeleteObject(OldPen);
+            }
+
+            for (int i = 0; i < 6; i++)                     ///// BRUSH
+            {
+                MyBrush = CreateHatchBrush(i, RGB(255, 0, 0));
+                OldBrush = (HBRUSH)SelectObject(hdc, MyBrush);
+
+                testRT.left   = 800 + ((i % 3) * (nWidth + 10));
+                testRT.top    = 400 + ((i / 3) * (nHeight + 10));
+                testRT.right  = testRT.left + nWidth;
+                testRT.bottom = testRT.top + nHeight;
+
+                Rectangle(hdc, testRT.left, testRT.top, testRT.right, testRT.bottom);
+
+                SelectObject(hdc, OldBrush);
+                DeleteObject(MyBrush);
+                DeleteObject(OldBrush);
+            }
+            ///// ==============================
             EndPaint(hWnd, &ps);
         }
         break;
@@ -500,6 +593,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         ///// #10. 윈도우 타이머 (제거)
         KillTimer(hWnd, 1);
         KillTimer(hWnd, 2);
+        KillTimer(hWnd, 3);
         ///// ==============================
         PostQuitMessage(0);
         break;
