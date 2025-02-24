@@ -450,8 +450,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 nY += 10;
                 break;
             case VK_ESCAPE:                                 ///// ESC 키
-                /////PostMessage(hWnd, WM_CLOSE, 0, 0);     ///// 윈도우 메시지 보내기 가능. 윈도우 정상 종료
-                PostMessage(hWnd, WM_DESTROY, 0, 0);
+                PostMessage(hWnd, WM_CLOSE, 0, 0);          ///// 윈도우 메시지 보내기 가능. 윈도우 정상 종료
+                /////PostMessage(hWnd, WM_DESTROY, 0, 0);
                 /////PostQuitMessage(0);
                 break;
             }
@@ -588,6 +588,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             EndPaint(hWnd, &ps);
         }
         break;
+    case WM_SIZE:
+        ///// ==============================
+        ///// #14. 윈도우의 크기가 변경되었을 때, 보내지는 메시지
+        
+        ///// WM_SIZE message wParam values
+        ///// #define SIZE_RESTORED       0       ///// 크기가 변경되었다.
+        ///// #define SIZE_MINIMIZED      1       ///// 최소화 되었다.
+        ///// #define SIZE_MAXIMIZED      2       ///// 최대화 되었다.
+        ///// #define SIZE_MAXSHOW        3       ///// 다른 윈도우가 원래 크기로 복구되어 이 윈도우가 드러났다.
+        ///// #define SIZE_MAXHIDE        4       ///// 다른 윈도우가 최대화 되어 위 윈도우가 가려졌다.
+        
+        static RECT m_wRT;                        ///// 윈도우 화면 사이즈
+        GetClientRect(hWnd, &m_wRT);              ///// 화면 사이즈를 받아온다. (Client Area) = 작업 영역 ((( 별 위치부터 회색 부분이 화면 사이즈이다. )))
+
+        ///// lParam ==> 변경된 좌표값이 전달된다.
+        ///// ==============================
+        break;
+    case WM_MOVE:
+        ///// ==============================
+        ///// WM_SIZE와 유사하다.
+        ///// 윈도우의 위치가 변경될 때마다 보내지는 메시지
+        ///// ------------------------------
+        ///// 이동될 때마다 특별한 일을 할 때 사용되지만, 잘 사용되지는 않는다. ((( 많이 사용 안한다. )))
+        ///// 위치가 변경될 때에 lParam에 로우워드에 x좌표, 하이워드에 y좌표
+        break;
     case WM_DESTROY:
         ///// ==============================
         ///// #10. 윈도우 타이머 (제거)
@@ -596,6 +621,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         KillTimer(hWnd, 3);
         ///// ==============================
         PostQuitMessage(0);
+        break;
+    case WM_CLOSE:
+        {
+            ///// ==============================
+            ///// #15. 종료 버튼 누를 때...
+            int check = MessageBox(hWnd, L"프로그램을 종료 하시겠습니까?", L"프로그램 종료 확인", MB_ICONQUESTION | MB_OKCANCEL);
+
+            if (check == IDOK)
+            {
+                PostMessage(hWnd, WM_DESTROY, 0, 0);            ///// 정상 종료!! (종료 부분 일원화!!)
+                ///// ------------------------------
+                ///// WM_QUIT 사용하는 경우의 코드 아래 참고
+                /////(hWnd, 1);
+                /////KillTimer(hWnd, 2);
+                /////KillTimer(hWnd, 3);
+                /////PostQuitMessage(0);
+                /////PostMessage(hWnd, WM_QUIT, 0, 0);          ///// 강제 종료!!
+            }
+            ///// ==============================
+        }
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
