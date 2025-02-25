@@ -48,7 +48,7 @@ HBRUSH h_bk_brush;
 ///// 마우스 클릭 영역 체크 함수
 void OnLButtonDown(HWND hWnd, int _x, int _y);
 
-///// 승패 처리 함수 (착점할 때마다 확인하는 방법!!)
+///// 승패 처리 함수 (착점할 때마다 확인하는 방법!! = 오목!!)
 int CheckPointer(HWND hWnd, int _x, int _y, int _Stone);
 ///// ==============================
 
@@ -189,6 +189,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+    case WM_LBUTTONDOWN:    /////
+        {
+            ///// ==============================
+            ///// 보드판 클릭시에 좌표 데이터 전달하기
+            int y = HIWORD(lParam); ///// 상위 16비트 값, y좌표
+            int x = LOWORD(lParam); ///// 하위 16비트 값, x좌표
+
+            ///// 영역을 체크하는 함수로 보낸다.
+            OnLButtonDown(hWnd, x, y);
+            ///// ==============================
+        }
+        break;
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -216,11 +228,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             
             ///// ------------------------------
             ///// TEST DATA
-            g_dol[0][0] = 1;
-            g_dol[1][1] = 2;
-            g_dol[2][2] = 0;
-            g_dol[3][3] = 2;
-            g_dol[4][4] = 1;
+            ///// g_dol[0][0] = 1;
+            ///// g_dol[1][1] = 2;
+            ///// g_dol[2][2] = 0;
+            ///// g_dol[3][3] = 2;
+            ///// g_dol[4][4] = 1;
             ///// ------------------------------
 
             for (int y = 0; y < Y_COUNT; y++)
@@ -282,12 +294,201 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return (INT_PTR)FALSE;
 }
 
-void OnLButtonDown(HWND hWnd, int _x, int _y)
+void OnLButtonDown(HWND hWnd, int _x, int _y)   /////
 {
+    ///// ==============================
+    ///// 영역 확인하기
+    ///// 클릭한 위치가 바둑판 영역인지 체크한다.
+    if (_x > (XPOS(0) - HALF_INTERVAL) 
+        && _y > (YPOS(0) - HALF_INTERVAL) 
+        && _x < (XPOS(X_COUNT - 1) + HALF_INTERVAL)
+        && _y < (YPOS(Y_COUNT - 1) + HALF_INTERVAL))
+    {
+        ///// TEST
+        ///// MessageBox(hWnd, L"영역 안 입니다.", L"TEST", MB_OK);
+
+        ///// 마우스 입력값 보정하기 (배열값으로 변경!!!)
+        int x = (_x - START_X + HALF_INTERVAL) / INTERVAL;
+        int y = (_y - START_Y + HALF_INTERVAL) / INTERVAL;
+
+        ///// 바둑돌이 없는 곳에만 바둑돌을 놓을 수 있다!!
+        if (g_dol[y][x] == 0)
+        {
+            ///// 바둑돌 놓기
+            g_dol[y][x] = g_step + 1;
+
+            ///// 승패 확인하기
+            CheckPointer(hWnd, x, y, g_dol[y][x]);
+
+            ///// 턴 바꾸기
+            ///// (검은돌을 놓았으면 흰돌로, 흰돌을 놓았으면 검은돌로...)
+            g_step = !g_step;
+
+            ///// 화면 갱신하기
+            InvalidateRect(hWnd, NULL, TRUE);
+        }
+    }
+    ///// ==============================
 }
 
-int CheckPointer(HWND hWnd, int _x, int _y, int _Stone)
+///// 현재 놓은 바둑돌의 좌표와 정보를 얻는다.
+int CheckPointer(HWND hWnd, int _x, int _y, int _Stone) /////
 {
+    int x = 0, y = 0;
+    int count = 0;
+
+    ///// [ 가로 처리하기 ]
+
+    ///// 00. 초기화
+    x = _x;
+    y = _y;
+    count = 0;
+    
+    ///// 01. x값을 감소시켜 시작 위치 얻어오기
+    while (g_dol[_y][x - 1] == _Stone && x > 0)
+    {
+        x--;
+    }
+    
+    ///// 02. x값만 증가시켜 _Stone 과 다를 때까지 증가시키기 (내 바둑돌의 수 측정)
+    while (g_dol[_y][x++] == _Stone && x < X_COUNT)
+    {
+        count++;
+    }
+    
+    ///// 03. 내 바둑돌의 수가 5인 경우 (승리 판정)
+    if (count == 5)
+    {
+        ///// 흑돌의 승리
+        if (_Stone == 1)
+        {
+            MessageBox(hWnd, L"흑돌의 승리 입니다.", L"경기 종료 (가로)", MB_OK);
+            return _Stone;
+        }
+        ///// 흑돌의 승리
+        if (_Stone == 2)
+        {
+            MessageBox(hWnd, L"백돌의 승리 입니다.", L"경기 종료 (가로)", MB_OK);
+            return _Stone;
+        }
+    }
+
+    ///// ------------------------------
+
+    ///// [ 세로 처리하기 ]
+
+    ///// 00. 초기화
+    x = _x;
+    y = _y;
+    count = 0;
+
+    ///// 01. y값을 감소시켜 시작 위치 얻어오기
+    while (g_dol[y - 1][_x] == _Stone && y > 0)
+    {
+        y--;
+    }
+
+    ///// 02. y값만 증가시켜 _Stone 과 다를 때까지 증가시키기 (내 바둑돌의 수 측정)
+    while (g_dol[y++][_x] == _Stone && y < Y_COUNT)
+    {
+        count++;
+    }
+
+    ///// 03. 내 바둑돌의 수가 5인 경우 (승리 판정)
+    if (count == 5)
+    {
+        ///// 흑돌의 승리
+        if (_Stone == 1)
+        {
+            MessageBox(hWnd, L"흑돌의 승리 입니다.", L"경기 종료 (세로)", MB_OK);
+            return _Stone;
+        }
+        ///// 흑돌의 승리
+        if (_Stone == 2)
+        {
+            MessageBox(hWnd, L"백돌의 승리 입니다.", L"경기 종료 (세로)", MB_OK);
+            return _Stone;
+        }
+    }
+
+    ///// ------------------------------
+
+    ///// [ 대각선 ↘↖ 처리하기 ]
+
+    ///// 00. 초기화
+    x = _x;
+    y = _y;
+    count = 0;
+
+    ///// 01. x, y값을 감소시켜 시작 위치 얻어오기
+    while (g_dol[y - 1][x - 1] == _Stone && x > 0 && y > 0)
+    {
+        x--;
+        y--;
+    }
+
+    ///// 02. x, y값을 증가시켜 _Stone 과 다를 때까지 증가시키기 (내 바둑돌의 수 측정)
+    while (g_dol[y++][x++] == _Stone && x < X_COUNT && y < Y_COUNT)
+    {
+        count++;
+    }
+
+    ///// 03. 내 바둑돌의 수가 5인 경우 (승리 판정)
+    if (count == 5)
+    {
+        ///// 흑돌의 승리
+        if (_Stone == 1)
+        {
+            MessageBox(hWnd, L"흑돌의 승리 입니다.", L"경기 종료 (↘)", MB_OK);
+            return _Stone;
+        }
+        ///// 흑돌의 승리
+        if (_Stone == 2)
+        {
+            MessageBox(hWnd, L"백돌의 승리 입니다.", L"경기 종료 (↘)", MB_OK);
+            return _Stone;
+        }
+    }
+
+    ///// ------------------------------
+
+    ///// [ 대각선 ↗↙ 처리하기 ]
+    ///// ↗ 시작 위치를 구할 때, ↙ 카운트 셀 때
+
+    ///// 00. 초기화
+    x = _x;
+    y = _y;
+    count = 0;
+
+    ///// 01. x값은 증가시키고, y값은 감소시켜 시작 위치 얻어오기
+    while (g_dol[y - 1][x + 1] == _Stone && x < X_COUNT && y > 0)
+    {
+        x++;
+        y--;
+    }
+
+    ///// 02. x값은 감소시키고, y값은 증가시켜 _Stone 과 다를 때까지 증가시키기 (내 바둑돌의 수 측정)
+    while (g_dol[y++][x--] == _Stone && x > 0 && y < Y_COUNT)
+    {
+        count++;
+    }
+
+    ///// 03. 내 바둑돌의 수가 5인 경우 (승리 판정)
+    if (count == 5)
+    {
+        ///// 흑돌의 승리
+        if (_Stone == 1)
+        {
+            MessageBox(hWnd, L"흑돌의 승리 입니다.", L"경기 종료 (↗)", MB_OK);
+            return _Stone;
+        }
+        ///// 흑돌의 승리
+        if (_Stone == 2)
+        {
+            MessageBox(hWnd, L"백돌의 승리 입니다.", L"경기 종료 (↗)", MB_OK);
+            return _Stone;
+        }
+    }
+
     return 0;
 }
-
