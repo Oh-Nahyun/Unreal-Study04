@@ -236,7 +236,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                             hBrush = CreateSolidBrush(RGB(0, 90 + (i * 15), 0));    ///// 점점 진해지는 연두색
                             oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
 
-                            Ellipse(hdc, coordinates[i][0] - 10, coordinates[i][i] - 10, coordinates[i][0] + 10, coordinates[i][i] + 10);
+                            Ellipse(hdc, coordinates[i][0] - 10, coordinates[i][1] - 10, coordinates[i][0] + 10, coordinates[i][1] + 10);
                         }
 
                         SelectObject(hdc, oldBrush);
@@ -253,7 +253,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         hFont = CreateFont(20, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, 0, _T("새굴림"));
                         SelectObject(hdc, hFont);
 
-                        TextOut(hdc, 330, 320, _T("Press Any Key"), _tcslen(_T("Press Any Key")));
+                        ///// 뱀이 위에 찍힐 때만.. (y = 100) --> 점멸 효과
+                        if (coordinates[0][1] == 100)
+                            TextOut(hdc, 330, 320, _T("Press Any Key"), _tcslen(_T("Press Any Key")));
 
                         SelectObject(hdc, oldFont);
                         DeleteObject(hFont);
@@ -262,22 +264,120 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case SETTING:                   ///// 게임 세팅
                     {
+                        ///// 글자 출력하기
+                        hFont = CreateFont(40, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, 0, _T("새굴림"));
+                        oldFont = (HFONT)SelectObject(hdc, hFont);
 
+                        TextOut(hdc, 300, 100, _T("난이도 선택"), _tcslen(_T("난이도 선택")));
+
+                        hFont = CreateFont(30, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, 0, _T("새굴림"));
+                        SelectObject(hdc, hFont);
+
+                        TextOut(hdc, 360, 200, _T("쉬움"), _tcslen(_T("쉬움")));
+                        TextOut(hdc, 360, 230, _T("보통"), _tcslen(_T("보통")));
+                        TextOut(hdc, 360, 260, _T("어려움"), _tcslen(_T("어려움")));
+                        
+                        ///// 난이도 선택 표시하기
+                        switch (difficulty)
+                        {
+                        case EASY:
+                            TextOut(hdc, 300, 200, _T("▶"), _tcslen(_T("▶")));
+                            break;
+                        case MEDIUM:
+                            TextOut(hdc, 300, 230, _T("▶"), _tcslen(_T("▶")));
+                            break;
+                        case DIFFICULT:
+                            TextOut(hdc, 300, 260, _T("▶"), _tcslen(_T("▶")));
+                            break;
+                        }
+
+                        SelectObject(hdc, oldFont);
+                        DeleteObject(hFont);
+                        DeleteObject(oldFont);
                     }
                     break;
                 case COUNTDOWN:                 ///// 카운트 다운 보여주기
                     {
+                        ///// 글자 출력하기
+                        hFont = CreateFont(40, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, 0, _T("새굴림"));
+                        oldFont = (HFONT)SelectObject(hdc, hFont);
 
+                        wsprintf(buffer, _T("%d초 후 시작합니다."), cnt_time);
+                        TextOut(hdc, 230, 230, buffer, _tcslen(buffer));
+
+                        SelectObject(hdc, oldFont);
+                        DeleteObject(hFont);
+                        DeleteObject(oldFont);
                     }
                     break;
                 case GAME:                      ///// 게임 플레이 화면 그리기
                     {
+                        memdc = CreateCompatibleDC(hdc);
+                        hBit = CreateCompatibleBitmap(hdc, 800, 500);
 
+                        oldBit = (HBITMAP)SelectObject(memdc, hBit);
+
+                        ///// ------------------------------
+                        ///// [ memDC 에 그리기 ]
+
+                        ///// 바탕을 흰색으로 변경하기
+                        Rectangle(memdc, 0, 0, 800, 500);
+
+                        ///// 벽 그리기 (가로)
+                        for (i = 1; i <= 40; i++)       ///// 상
+                        {
+                            Rectangle(memdc, (i - 1) * 20, 0, i * 20, 20);
+                        }
+                        for (i = 1; i <= 40; i++)       ///// 하
+                        {
+                            Rectangle(memdc, (i - 1) * 20, 440, i * 20, 460);
+                        }
+
+                        ///// 벽 그리기 (세로)
+                        for (i = 2; i <= 25; i++)       ///// 좌
+                        {
+                            Rectangle(memdc, 0, (i - 1) * 20, 20, i * 20);
+                        }
+                        for (i = 2; i <= 25; i++)       ///// 우
+                        {
+                            Rectangle(memdc, 760, (i - 1) * 20, 780, i * 20);
+                        }
+
+                        ///// 아이템 출력하기
+                        for (i = 0; i < 10; i++)
+                        {
+                            Ellipse(memdc, items[i][0] - 10, items[i][1] - 10, items[i][0] + 10, items[i][1] + 10);
+                        }
+
+                        ///// 뱀 그리기
+                        for (i = 0; i < cnt_circle; i++)
+                        {
+                            ///// 점점 바뀌는 연두색
+                            hBrush = CreateSolidBrush(RGB(0, 90 + (i * 15), 0));
+                            oldBrush = (HBRUSH)SelectObject(memdc, hBrush);
+
+                            Ellipse(memdc, coordinates[i][0] - 10, coordinates[i][1] - 10, coordinates[i][0] + 10, coordinates[i][1] + 10);
+                        }
+                        SelectObject(memdc, oldBrush);
+                        DeleteObject(hBrush);
+                        DeleteObject(oldBrush);
+
+                        ///// 점수 출력하기
+                        
+                        ///// ------------------------------
+                        ///// 화면 갱신하기 (memDC -> hdc)
+                        BitBlt(hdc, 0, 0, 800, 500, memdc, 0, 0, SRCCOPY);
+
+                        ///// 제거하기
+                        SelectObject(memdc, oldBit);
+                        DeleteObject(memdc);
+                        DeleteObject(hBit);
+                        DeleteObject(oldBit);
                     }
                     break;
                 case GAMEOVER:                  ///// 게임 오버 & 메뉴 선택 화면
                     {
-
+                        
                     }
                     break;
             }
@@ -289,17 +389,53 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     ///// WM_KEYDOWN
     case WM_KEYDOWN:
         {
+            ///// ESC가 눌리면, 프로그램 종료
+            if (wParam == VK_ESCAPE)
+                DestroyWindow(hWnd);
+
             ///// 상태에 따라 처리하는 부분..
             switch (status)
             {
                 case LOGO:                      ///// 로고 상태일 경우 입력이 있다면..
                     {
-                        
+                        KillTimer(hWnd, LOGO_TIMER);        ///// 로고의 타이머 해제하기
+                        status = SETTING;                   ///// 씬 변경하기
+                        InvalidateRect(hWnd, NULL, TRUE);   ///// 화면 다시 그리기
                     }
                     break;
                 case SETTING:                   ///// 게임 세팅. 난이도 설정, 엔터키가 눌리면 설정 적용 -> 다음 씬으로 이동
                     {
-                        
+                        if (wParam == VK_RETURN)                                        ///// 엔터를 눌러서 설정이 적용된다.
+                        {
+                            ///// 게임 초기화 하기 => 카운트 다운 시작하기
+                            cnt_circle = 2;                 ///// 뱀의 길이 시작값 (2개)
+                            x = 30;                         ///// 맨 처음 x좌표
+
+                            ///// 뱀 좌표 설정하기
+                            for (i = cnt_circle - 1; i >= 0; i--)
+                            {
+                                coordinates[i][0] = x;
+                                coordinates[i][1] = 30;
+                                x += 20;
+                            }
+
+                            ///// 씬(상태) 변경하기 -> 카운트 다운 씬
+                            status = COUNTDOWN;
+
+                            ///// 카운트 다운 타이머 설정하기
+                            SetTimer(hWnd, COUNTDOWN_TIMER, SEC, NULL);
+                        }
+                        else if (wParam == VK_UP && difficulty != EASY)                 ///// UP 키
+                        {
+                            difficulty += 20;
+                        }
+                        else if (wParam == VK_DOWN && difficulty != DIFFICULT)          ///// DOWN 키
+                        {
+                            difficulty -= 20;
+                        }
+
+                        ///// 다시 그리기
+                        InvalidateRect(hWnd, NULL, TRUE);
                     }
                     break;
                 case GAME:                      ///// 게임 입력 받은 후 -> GAME_TIMER 에서 후처리
@@ -319,17 +455,78 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     ///// WM_TIMER
     case WM_TIMER:
         {
-            ///// 상태에 따라 처리하는 부분..
-            switch (status)
+            ///// wParam 값에 따라 처리하는 부분..
+            switch (wParam)
             {
                 case LOGO_TIMER:                ///// 뱀의 이동 처리 (게임의 킥. loading을 나타낸다.)
                     {
+                        for (i = cnt_circle - 1; i > 0; i--)
+                        {
+                            coordinates[i][0] = coordinates[i - 1][0];
+                            coordinates[i][1] = coordinates[i - 1][1];
+                        }
+                        coordinates[0][0] += 20;
+
+                        ///// 위, 아래 이동 (y값만 변화) - 반복 플래그 체크
+                        if (coordinates[0][1] == 100)
+                            coordinates[0][1] += 15;
+                        else
+                            coordinates[0][1] -= 15;
+                        
                         InvalidateRect(hWnd, NULL, TRUE);   ///// 다시 그려라
+
+                        ///// 뱀이 화면을 벗어난다면, 뱀의 좌표 초기화
+                        if (coordinates[11][0] > rectView.right)
+                        {
+                            ///// 뱀의 좌표 초기화
+                            x = -240;
+
+                            for (i = cnt_circle - 1; i >= 0; i--)
+                            {
+                                coordinates[i][0] = x;
+                                coordinates[i][1] = 100;
+                                x += 20;
+                            }
+                        }
                     }
                     break;
                 case COUNTDOWN_TIMER:           ///// 카운트 다운 타이머
                     {
-                        
+                        ///// 화면 갱신하기
+                        InvalidateRect(hWnd, NULL, TRUE);
+
+                        ///// 타이머 감소
+                        cnt_time--;
+
+                        ///// 타이머 종료
+                        if (cnt_time == 0)
+                        {
+                            ///// 카운트 다운이 끝나면, 타이머 제거하기
+                            KillTimer(hWnd, COUNTDOWN_TIMER);
+
+                            ///// 다음 씬으로 이동하기
+                            status = GAME;
+
+                            ///// 난이도별 (속도 = 타이머) 세팅하기
+                            switch (difficulty)
+                            {
+                            case EASY:
+                                minus = 30;     ///// 게임 메인에서 사용하는 변수 (점수 감소)
+                                SetTimer(hWnd, GAME_TIMER, EASY, NULL);
+                                break;
+                            case MEDIUM:
+                                minus = 40;
+                                SetTimer(hWnd, GAME_TIMER, MEDIUM, NULL);
+                                break;
+                            case DIFFICULT:
+                                minus = 50;
+                                SetTimer(hWnd, GAME_TIMER, DIFFICULT, NULL);
+                                break;
+                            }
+
+                            ///// 카운트 다운 타이머 숫자 초기화 하기
+                            cnt_time = 3;
+                        }
                     }
                     break;
                 case GAME_TIMER:                ///// 게임 속도, 방향에 따른 처리
@@ -345,6 +542,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         ///// ==============================
         ///// 임시...
         KillTimer(hWnd, LOGO_TIMER);
+        KillTimer(hWnd, COUNTDOWN_TIMER);
+        KillTimer(hWnd, GAME_TIMER);
         ///// ==============================
 
         PostQuitMessage(0);
@@ -402,6 +601,7 @@ void Start_Setting(HWND hwnd, int(*coordinates)[2], int(*items)[2], int* status,
     }
 
     ///// 로고에서 뱀 보여주기
+    x = -240;
     for (i = *cnt_circle - 1; i >= 0; i--)
     {
         coordinates[i][0] = x;
