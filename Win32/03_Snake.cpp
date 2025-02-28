@@ -363,6 +363,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         DeleteObject(oldBrush);
 
                         ///// 점수 출력하기
+                        hFont = CreateFont(20, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, 0, _T("새굴림"));
+                        oldFont = (HFONT)SelectObject(hdc, hFont);
+
+                        wsprintf(buffer, _T("점수 : %d"), score);
+                        TextOut(memdc, 0, 2, buffer, _tcslen(buffer));
+
+                        SelectObject(hdc, oldFont);
+                        DeleteObject(hFont);
+                        DeleteObject(oldFont);
                         
                         ///// ------------------------------
                         ///// 화면 갱신하기 (memDC -> hdc)
@@ -377,7 +386,51 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case GAMEOVER:                  ///// 게임 오버 & 메뉴 선택 화면
                     {
+                        ///// 폰트 설정하기
+                        hFont = CreateFont(30, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, 0, _T("새굴림"));
+                        oldFont = (HFONT)SelectObject(hdc, hFont);
                         
+                        ///// ------------------------------
+                        ///// 점수 보여주기 (게임 오버 and 최종 점수 = 0 || 게임 클리어 and 최종 점수)
+                        
+                        ///// 1. 게임 오버
+                        if (score <= 0)
+                        {
+                            TextOut(hdc, 300, 100, _T("GAME OVER"), _tcslen(_T("GAME OVER")));
+
+                            wsprintf(buffer, _T("최종 점수 : %d"), score);  ///// 어차피 score는 0이다.
+                            TextOut(hdc, 300, 200, buffer, _tcslen(buffer));
+                        }
+                        
+                        ///// 2. 게임 클리어
+                        else
+                        {
+                            TextOut(hdc, 270, 100, _T("☆ GAME CLEAR ☆"), _tcslen(_T("☆ GAME CLEAR ☆")));
+
+                            wsprintf(buffer, _T("최종 점수 : %d"), score);
+                            TextOut(hdc, 300, 200, buffer, _tcslen(buffer));
+                        }
+                        
+                        ///// 게임 종료 메뉴
+                        TextOut(hdc, 320, 300, _T("다시 하기"), _tcslen(_T("다시 하기")));
+                        TextOut(hdc, 320, 340, _T("게임 종료"), _tcslen(_T("게임 종료")));
+                        
+                        ///// 게임 종료 메뉴 화살표 출력하기
+                        switch (menu)
+                        {
+                        case REGAME:
+                            TextOut(hdc, 280, 300, _T("▶"), _tcslen(_T("▶")));
+                            break;
+                        case EXIT:
+                            TextOut(hdc, 280, 340, _T("▶"), _tcslen(_T("▶")));
+                            break;
+                        }
+                        
+                        ///// ------------------------------
+                        ///// 폰트 제거하기
+                        SelectObject(hdc, oldFont);
+                        DeleteObject(hFont);
+                        DeleteObject(oldFont);
                     }
                     break;
             }
@@ -440,12 +493,45 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case GAME:                      ///// 게임 입력 받은 후 -> GAME_TIMER 에서 후처리
                     {
-                        
+                        ///// 체크하기!! (현재 게임 상태인지?, 이동키가 눌렸는지? 확인 -> 방향 저장)
+                        if (status == GAME && wParam == VK_UP || wParam == VK_DOWN || wParam == VK_LEFT || wParam == VK_RIGHT)
+                        {
+                            direction = wParam;
+                        }
                     }
                     break;
-                case GAMEOVER:                  ///// 게임 오버 메뉴 선택창 (엔터로 설정 적용)
+                case GAMEOVER:                  ///// 게임 오버 메뉴 선택 창 (엔터로 설정 적용)
                     {
+                        ///// 선택 (엔터)
+                        if (wParam == VK_RETURN)
+                        {
+                            switch (menu)
+                            {
+                            case REGAME:
+                                ///// 게임 데이터 초기화 하기 --> LOGO 씬으로 이동하기
+                                Start_Setting(hWnd, coordinates, items, &status, &difficulty, &menu, &direction, &score, &cnt_circle, &cnt_item);
+
+                                ///// 화면 갱신하기
+                                InvalidateRect(hWnd, NULL, TRUE);
+                                break;
+                            case EXIT:
+                                DestroyWindow(hWnd);
+                                break;
+                            }
+                        }
                         
+                        ///// 선택 (UP & DOWN)
+                        else if (wParam == VK_UP && menu == EXIT)       ///// UP 인 경우
+                        {
+                            menu = REGAME;
+                        }
+                        else if (wParam == VK_DOWN && menu == REGAME)   ///// DOWN 인 경우
+                        {
+                            menu = EXIT;
+                        }
+                        
+                        ///// 화면 갱신하기
+                        InvalidateRect(hWnd, NULL, TRUE);
                     }
                     break;
             }
@@ -531,7 +617,129 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case GAME_TIMER:                ///// 게임 속도, 방향에 따른 처리
                     {
+                        ///// 속도 처리하기 (이동 중 아이템을 만난 경우 => 몸통의 길이가 길어진다.)
+                        for (i = 0; i < 10; i++)
+                        {
+                            ///// 뱀의 머리가 아이템과 만나는 경우!!
+                            if (coordinates[0][0] == items[i][0] && coordinates[0][1] == items[i][1])
+                            {
+                                ///// 몸통의 길이 늘리기 (원의 갯수 증가)
+                                cnt_circle++;
+
+                                ///// 아이템 수 줄이기
+                                cnt_item--;
+
+                                ///// 먹은 아이템의 위치 초기화 하기
+                                items[i][0] = 0;
+                                items[i][1] = 0;
+                                
+                                ///// 점수 추가하기 (100점)
+                                score += 100;
+                            }
+                        }
+
+                        ///// 각 난이도 속도에 따라 점수 변화하기 (시간이 지남에 따라 점수 감소 (기본 + 난이도))
+                        score -= minus;
                         
+                        ///// 다시 그리기
+                        InvalidateRect(hWnd, NULL, FALSE);
+
+                        ///// ------------------------------
+                        ///// 게임 종료 판정 (점수) (스코어가 0이거나, 아이템을 모두 먹은 경우 (게임 플레이 종료))
+                        if (score <= 0 || cnt_item <= 0)
+                        {
+                            End_Game(hWnd, score, &status);
+                        }
+                        
+                        ///// ------------------------------
+                        ///// 방향 처리하기 (방향에 따른 움직임 (키보드 입력 처리))
+                        switch (direction)
+                        {
+                        case VK_UP:
+                            {
+                                ///// 죽음 처리하기 (상단 벽에 부딪히면 죽는다.)
+                                if (coordinates[0][1] - 20 < rectView.top + 20)
+                                {
+                                    ///// 벽에 부딪히면 0점 처리하기
+                                    score = 0;
+
+                                    ///// 게임 종료하기
+                                    End_Game(hWnd, score, &status);
+                                }
+
+                                ///// 위치 증가시키기
+                                for (i = cnt_circle - 1; i > 0; i--)
+                                {
+                                    coordinates[i][0] = coordinates[i - 1][0];
+                                    coordinates[i][1] = coordinates[i - 1][1];
+                                }
+                                coordinates[0][1] -= 20;
+                            }
+                            break;
+                        case VK_DOWN:
+                            {
+                                ///// 죽음 처리하기 (하단 벽에 부딪히면 죽는다.)
+                                if (coordinates[0][1] + 20 > rectView.bottom - 20)
+                                {
+                                    ///// 벽에 부딪히면 0점 처리하기
+                                    score = 0;
+
+                                    ///// 게임 종료하기
+                                    End_Game(hWnd, score, &status);
+                                }
+
+                                ///// 위치 증가시키기
+                                for (i = cnt_circle - 1; i > 0; i--)
+                                {
+                                    coordinates[i][0] = coordinates[i - 1][0];
+                                    coordinates[i][1] = coordinates[i - 1][1];
+                                }
+                                coordinates[0][1] += 20;
+                            }
+                            break;
+                        case VK_LEFT:
+                            {
+                                ///// 죽음 처리하기 (좌측 벽에 부딪히면 죽는다.)
+                                if (coordinates[0][0] - 20 < rectView.left + 20)
+                                {
+                                    ///// 벽에 부딪히면 0점 처리하기
+                                    score = 0;
+
+                                    ///// 게임 종료하기
+                                    End_Game(hWnd, score, &status);
+                                }
+
+                                ///// 위치 증가시키기
+                                for (i = cnt_circle - 1; i > 0; i--)
+                                {
+                                    coordinates[i][0] = coordinates[i - 1][0];
+                                    coordinates[i][1] = coordinates[i - 1][1];
+                                }
+                                coordinates[0][0] -= 20;
+                            }
+                            break;
+                        case VK_RIGHT:
+                            {
+                                ///// 죽음 처리하기 (우측 벽에 부딪히면 죽는다.)
+                                if (coordinates[0][0] + 20 > rectView.right - 20)
+                                {
+                                    ///// 벽에 부딪히면 0점 처리하기
+                                    score = 0;
+
+                                    ///// 게임 종료하기
+                                    End_Game(hWnd, score, &status);
+                                }
+
+                                ///// 위치 증가시키기
+                                for (i = cnt_circle - 1; i > 0; i--)
+                                {
+                                    coordinates[i][0] = coordinates[i - 1][0];
+                                    coordinates[i][1] = coordinates[i - 1][1];
+                                }
+                                coordinates[0][0] += 20;
+                            }
+                            break;
+                        }
                     }
                     break;
             }
@@ -614,9 +822,31 @@ void Start_Setting(HWND hwnd, int(*coordinates)[2], int(*items)[2], int* status,
 }
 
 ///// <summary>
-///// 
+///// 게임 종료 시 호출되는 함수
 ///// </summary>
 void End_Game(HWND hwnd, int score, int* status)
 {
+    TCHAR buffer[100] = { 0, };
 
+    ///// 게임 플레이 타이머 종료
+    KillTimer(hwnd, GAME_TIMER);
+
+    ///// 1. 죽어서 끝나는 경우
+    if (score <= 0)
+    {
+        MessageBox(hwnd, _T("죽었습니다.ㅠㅠ"), _T("플레이 종료"), MB_OK);
+    }
+
+    ///// 2. 아이템을 모두 먹어서 끝나는 경우 (클리어!)
+    else
+    {
+        wsprintf(buffer, _T("최종 점수 : %d"), score);
+        MessageBox(hwnd, buffer, _T("GAME CLEAR !!!"), MB_OK);
+    }
+
+    ///// 씬 변경 --> 게임오버 씬
+    *status = GAMEOVER;
+
+    ///// 화면 다시 그리기 (화면 지우기)
+    InvalidateRect(hwnd, NULL, TRUE);
 }
