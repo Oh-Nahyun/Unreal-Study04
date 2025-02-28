@@ -364,12 +364,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                         ///// 점수 출력하기
                         hFont = CreateFont(20, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, 0, _T("새굴림"));
-                        oldFont = (HFONT)SelectObject(hdc, hFont);
+                        oldFont = (HFONT)SelectObject(memdc, hFont);
 
                         wsprintf(buffer, _T("점수 : %d"), score);
                         TextOut(memdc, 0, 2, buffer, _tcslen(buffer));
 
-                        SelectObject(hdc, oldFont);
+                        SelectObject(memdc, oldFont);
                         DeleteObject(hFont);
                         DeleteObject(oldFont);
                         
