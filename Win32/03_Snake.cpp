@@ -379,7 +379,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                         ///// 제거하기
                         SelectObject(memdc, oldBit);
-                        DeleteObject(memdc);
+                        DeleteDC(memdc);        ///// 다 쓴거는 반환하기
                         DeleteObject(hBit);
                         DeleteObject(oldBit);
                     }
